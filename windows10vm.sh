@@ -51,45 +51,39 @@ mkdir -p "$ISO_DIR" || {
     exit 1
 }
 
-# Loop until a valid ISO is provided
-while true; do
-    # Specify the Windows 10 ISO to download
-    WIN10_ISO_URL="https://software-download.microsoft.com/download/pr/19043.1165.210529-1541.co_release_CLIENT_CONSUMER_x64FRE_en-us.iso"
-    ISO_PATH="$ISO_DIR/Windows10.iso"
+# Specify the Windows 10 ISO to download
+WIN10_ISO_URL="https://dl.bobpony.com/windows/10/en-us_windows_10_22h2_x64.iso"
+ISO_PATH="$ISO_DIR/Windows10.iso"
 
-    # Attempt to download the Windows 10 ISO
-    echo "Downloading Windows 10 ISO from Microsoft..."
-    wget -O "$ISO_PATH" "$WIN10_ISO_URL" && {
-        echo "ISO downloaded successfully."
-        break
-    }
-
-    # If download fails, prompt for manual input
+# Attempt to download the Windows 10 ISO
+echo "Downloading Windows 10 ISO..."
+wget -O "$ISO_PATH" "$WIN10_ISO_URL" || {
     echo "Failed to download Windows 10 ISO. Please provide the path to an existing Windows 10 ISO."
     read -p "Enter the full path or URL to the Windows 10 ISO: " ISO_PATH
 
     # Check if the input is a URL (starts with http:// or https://)
     if [[ "$ISO_PATH" =~ ^https?:// ]]; then
         echo "Downloading ISO from provided URL: $ISO_PATH"
-        wget -O "$ISO_DIR/Windows10.iso" "$ISO_PATH" && {
-            echo "ISO downloaded successfully."
-            break
+        wget -O "$ISO_DIR/Windows10.iso" "$ISO_PATH" || {
+            echo "Error: Failed to download ISO from the provided URL. Exiting."
+            exit 1
         }
-        echo "Error: Failed to download ISO from the provided URL. Please try again."
     else
         # Check if the local file exists
         if [ -f "$ISO_PATH" ]; then
             echo "Using local ISO file: $ISO_PATH"
-            cp "$ISO_PATH" "$ISO_DIR/Windows10.iso" && {
-                echo "ISO copied successfully."
-                break
+            cp "$ISO_PATH" "$ISO_DIR/Windows10.iso" || {
+                echo "Error: Failed to copy the local ISO file. Exiting."
+                exit 1
             }
-            echo "Error: Failed to copy the local ISO file. Please try again."
         else
-            echo "Error: The specified ISO file does not exist. Please try again."
+            echo "Error: The specified ISO file does not exist. Exiting."
+            exit 1
         fi
     fi
-done
+}
+
+echo "ISO downloaded successfully."
 
 # Generate a random password
 ADMIN_PASSWORD=$(generate_password)
@@ -128,7 +122,7 @@ qm create "$VM_ID" --name "$VM_NAME" --memory "$MEMORY" --cpu host --net0 virtio
 
 # Add a SATA hard drive to the VM
 echo "Adding disk to VM..."
-qm set "$VM_ID" --scsi0 "local:${DISK_SIZE}G" || {
+qm set "$VM_ID" --scsi0 "local-lvm:vm-$VM_ID-disk-0,size=${DISK_SIZE}G" || {
     echo "Error: Failed to add disk to VM. Please check if the storage path is valid."
     echo "Logs can be found at: /var/log/pve/tasks/active"
     exit 1
