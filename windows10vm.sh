@@ -31,6 +31,9 @@ generate_password() {
 # Prompt for user input or use defaults
 read -p "Enter VM name [Windows10]: " VM_NAME
 VM_NAME=${VM_NAME:-Windows10}
+
+# Ensure the VM name is in a valid format (replace spaces with hyphens)
+VM_NAME=$(echo "$VM_NAME" | tr ' ' '-')
 echo "-> Using VM name: $VM_NAME"
 
 read -p "Enter memory size in MB [4096]: " MEMORY
