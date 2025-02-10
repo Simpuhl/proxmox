@@ -55,8 +55,11 @@ while true; do
     ISO_PATH="$ISO_DIR/Windows10.iso"
 
     # Attempt to download the Windows 10 ISO
-    echo "Downloading Windows 10 ISO..."
-    wget -O "$ISO_PATH" "$WIN10_ISO_URL" && break
+    echo "Downloading Windows 10 ISO from Microsoft..."
+    wget -O "$ISO_PATH" "$WIN10_ISO_URL" && {
+        echo "ISO downloaded successfully."
+        break
+    }
 
     # If download fails, prompt for manual input
     echo "Failed to download Windows 10 ISO. Please provide the path to an existing Windows 10 ISO."
@@ -64,13 +67,21 @@ while true; do
 
     # Check if the input is a URL (starts with http:// or https://)
     if [[ "$ISO_PATH" =~ ^https?:// ]]; then
-        echo "Downloading ISO from URL: $ISO_PATH"
-        wget -O "$ISO_PATH" "$ISO_PATH" && break
+        echo "Downloading ISO from provided URL: $ISO_PATH"
+        wget -O "$ISO_DIR/Windows10.iso" "$ISO_PATH" && {
+            echo "ISO downloaded successfully."
+            break
+        }
         echo "Error: Failed to download ISO from the provided URL. Please try again."
     else
         # Check if the local file exists
         if [ -f "$ISO_PATH" ]; then
-            break
+            echo "Using local ISO file: $ISO_PATH"
+            cp "$ISO_PATH" "$ISO_DIR/Windows10.iso" && {
+                echo "ISO copied successfully."
+                break
+            }
+            echo "Error: Failed to copy the local ISO file. Please try again."
         else
             echo "Error: The specified ISO file does not exist. Please try again."
         fi
@@ -123,7 +134,7 @@ qm set "$VM_ID" --scsihw virtio-scsi-pci --scsi0 "$DISK_PATH,ssd=1,size=${DISK_S
 
 # Attach the Windows 10 ISO to the VM's CD/DVD drive
 echo "Attaching ISO to VM..."
-qm set "$VM_ID" --ide2 "$ISO_PATH,media=cdrom" || {
+qm set "$VM_ID" --ide2 "$ISO_DIR/Windows10.iso,media=cdrom" || {
     echo "Error: Failed to attach ISO to VM. Please check if the ISO path is valid."
     echo "Logs can be found at: /var/log/pve/tasks/active"
     exit 1
