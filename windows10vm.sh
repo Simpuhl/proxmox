@@ -94,7 +94,88 @@ AUTOUATTEND_PATH="$ISO_DIR/autounattend.xml"
 cat <<EOF > "$AUTOUATTEND_PATH"
 <?xml version="1.0" encoding="utf-8"?>
 <unattend xmlns="urn:schemas-microsoft-com:unattend">
-    <!-- XML content omitted for brevity -->
+    <settings pass="windowsPE">
+        <component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <SetupUILanguage>
+                <UILanguage>en-US</UILanguage>
+            </SetupUILanguage>
+            <InputLocale>en-US</InputLocale>
+            <SystemLocale>en-US</SystemLocale>
+            <UILanguage>en-US</UILanguage>
+            <UserLocale>en-US</UserLocale>
+        </component>
+        <component name="Microsoft-Windows-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <UserData>
+                <AcceptEula>true</AcceptEula>
+                <FullName>Admin</FullName>
+                <Organization>Proxmox</Organization>
+            </UserData>
+            <DiskConfiguration>
+                <Disk wcm:action="add">
+                    <DiskID>0</DiskID>
+                    <WillWipeDisk>true</WillWipeDisk>
+                    <CreatePartitions>
+                        <CreatePartition wcm:action="add">
+                            <Order>1</Order>
+                            <Type>Primary</Type>
+                            <Size>100000</Size>
+                        </CreatePartition>
+                    </CreatePartitions>
+                    <ModifyPartitions>
+                        <ModifyPartition wcm:action="add">
+                            <Order>1</Order>
+                            <PartitionID>1</PartitionID>
+                            <Format>NTFS</Format>
+                            <Label>OS</Label>
+                        </ModifyPartition>
+                    </ModifyPartitions>
+                </Disk>
+            </DiskConfiguration>
+            <ImageInstall>
+                <OSImage>
+                    <InstallTo>
+                        <DiskID>0</DiskID>
+                        <PartitionID>1</PartitionID>
+                    </InstallTo>
+                </OSImage>
+            </ImageInstall>
+        </component>
+    </settings>
+    <settings pass="oobeSystem">
+        <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <OOBE>
+                <HideEULAPage>true</HideEULAPage>
+                <SkipMachineOOBE>true</SkipMachineOOBE>
+                <SkipUserOOBE>true</SkipUserOOBE>
+            </OOBE>
+            <UserAccounts>
+                <AdministratorPassword>
+                    <Value>$ADMIN_PASSWORD</Value>
+                    <PlainText>true</PlainText>
+                </AdministratorPassword>
+                <LocalAccounts>
+                    <LocalAccount wcm:action="add">
+                        <Password>
+                            <Value>$ADMIN_PASSWORD</Value>
+                            <PlainText>true</PlainText>
+                        </Password>
+                        <DisplayName>Admin</DisplayName>
+                        <Group>Administrators</Group>
+                        <Name>Admin</Name>
+                    </LocalAccount>
+                </LocalAccounts>
+            </UserAccounts>
+            <AutoLogon>
+                <Password>
+                    <Value>$ADMIN_PASSWORD</Value>
+                    <PlainText>true</PlainText>
+                </Password>
+                <Username>Admin</Username>
+                <Enabled>true</Enabled>
+                <LogonCount>1</LogonCount>
+            </AutoLogon>
+        </component>
+    </settings>
 </unattend>
 EOF
 
@@ -116,36 +197,24 @@ fi
 echo "Creating VM $VM_ID ($VM_NAME)..."
 qm create "$VM_ID" --name "$VM_NAME" --memory "$MEMORY" --cpu host --net0 virtio,bridge=vmbr0 || {
     echo "Error: Failed to create VM $VM_ID. Please check if the VM ID is already in use."
-    echo "Logs can be found at: /var/log/pve/tasks/active"
+    echo "Logs can be found at: /var/log/pve/tasks/"
     exit 1
 }
 
 # Add a SATA hard drive to the VM
 echo "Adding disk to VM..."
-if qm config "$VM_ID" | grep -q "local-lvm"; then
-    echo "Using local-lvm storage for disk..."
-    qm set "$VM_ID" --scsi0 "local-lvm:vm-$VM_ID-disk-0,size=${DISK_SIZE}G" || {
-        echo "Error: Failed to add disk to VM using local-lvm. Falling back to local storage."
-        qm set "$VM_ID" --scsi0 "local:${DISK_SIZE}G" || {
-            echo "Error: Failed to add disk to VM. Please check if the storage path is valid."
-            echo "Logs can be found at: /var/log/pve/tasks/active"
-            exit 1
-        }
-    }
-else
-    echo "Using local storage for disk..."
-    qm set "$VM_ID" --scsi0 "local:${DISK_SIZE}G" || {
-        echo "Error: Failed to add disk to VM. Please check if the storage path is valid."
-        echo "Logs can be found at: /var/log/pve/tasks/active"
-        exit 1
-    }
-fi
+DISK_PATH="$STORAGE_PATH/vm-$VM_ID-disk-0.qcow2"
+qm set "$VM_ID" --scsi0 "local:$DISK_PATH,size=${DISK_SIZE}G" || {
+    echo "Error: Failed to add disk to VM. Please check if the storage path is valid."
+    echo "Logs can be found at: /var/log/pve/tasks/"
+    exit 1
+}
 
 # Attach the Windows 10 ISO to the VM's CD/DVD drive
 echo "Attaching ISO to VM..."
 qm set "$VM_ID" --ide2 "local:iso/Windows10.iso,media=cdrom" || {
     echo "Error: Failed to attach ISO to VM. Please check if the ISO path is valid."
-    echo "Logs can be found at: /var/log/pve/tasks/active"
+    echo "Logs can be found at: /var/log/pve/tasks/"
     exit 1
 }
 
@@ -153,7 +222,7 @@ qm set "$VM_ID" --ide2 "local:iso/Windows10.iso,media=cdrom" || {
 echo "Attaching autounattend.xml..."
 qm set "$VM_ID" --ide3 "local:iso/autounattend.xml,media=cdrom" || {
     echo "Error: Failed to attach autounattend.xml to VM. Please check if the file path is valid."
-    echo "Logs can be found at: /var/log/pve/tasks/active"
+    echo "Logs can be found at: /var/log/pve/tasks/"
     exit 1
 }
 
@@ -161,7 +230,7 @@ qm set "$VM_ID" --ide3 "local:iso/autounattend.xml,media=cdrom" || {
 echo "Configuring CPU..."
 qm set "$VM_ID" --cpu host || {
     echo "Error: Failed to configure CPU."
-    echo "Logs can be found at: /var/log/pve/tasks/active"
+    echo "Logs can be found at: /var/log/pve/tasks/"
     exit 1
 }
 
@@ -169,7 +238,7 @@ qm set "$VM_ID" --cpu host || {
 echo "Configuring display..."
 qm set "$VM_ID" --vga qxl || {
     echo "Error: Failed to configure display."
-    echo "Logs can be found at: /var/log/pve/tasks/active"
+    echo "Logs can be found at: /var/log/pve/tasks/"
     exit 1
 }
 
@@ -177,7 +246,7 @@ qm set "$VM_ID" --vga qxl || {
 echo "Starting VM..."
 qm start "$VM_ID" || {
     echo "Error: Failed to start VM $VM_ID. Please check the Proxmox logs for more details."
-    echo "Logs can be found at: /var/log/pve/tasks/active"
+    echo "Logs can be found at: /var/log/pve/tasks/"
     exit 1
 }
 
