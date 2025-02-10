@@ -49,10 +49,21 @@ ISO_PATH="/var/lib/vz/template/iso/Windows10.iso"
 echo "Downloading Windows 10 ISO..."
 wget -O "$ISO_PATH" "$WIN10_ISO_URL" || {
     echo "Failed to download Windows 10 ISO. Please provide the path to an existing Windows 10 ISO."
-    read -p "Enter the full path to the Windows 10 ISO: " ISO_PATH
-    if [ ! -f "$ISO_PATH" ]; then
-        echo "Error: The specified ISO file does not exist. Exiting."
-        exit 1
+    read -p "Enter the full path or URL to the Windows 10 ISO: " ISO_PATH
+
+    # Check if the input is a URL (starts with http:// or https://)
+    if [[ "$ISO_PATH" =~ ^https?:// ]]; then
+        echo "Downloading ISO from URL: $ISO_PATH"
+        wget -O "$ISO_PATH" "$ISO_PATH" || {
+            echo "Error: Failed to download ISO from the provided URL. Exiting."
+            exit 1
+        }
+    else
+        # Check if the local file exists
+        if [ ! -f "$ISO_PATH" ]; then
+            echo "Error: The specified ISO file does not exist. Exiting."
+            exit 1
+        fi
     fi
 }
 
@@ -120,4 +131,25 @@ qm set "$VM_ID" --ide3 "$AUTOUATTEND_PATH,media=cdrom" || {
 echo "Configuring CPU..."
 qm set "$VM_ID" --cpu host || {
     echo "Error: Failed to configure CPU."
-   
+    echo "Logs can be found at: /var/log/pve/tasks/active"
+    exit 1
+}
+
+# Enable the QXL display driver for improved performance
+echo "Configuring display..."
+qm set "$VM_ID" --vga qxl || {
+    echo "Error: Failed to configure display."
+    echo "Logs can be found at: /var/log/pve/tasks/active"
+    exit 1
+}
+
+# Start the VM
+echo "Starting VM..."
+qm start "$VM_ID" || {
+    echo "Error: Failed to start VM $VM_ID. Please check the Proxmox logs for more details."
+    echo "Logs can be found at: /var/log/pve/tasks/active"
+    exit 1
+}
+
+echo "VM $VM_ID started successfully."
+echo "Administrator password: $ADMIN_PASSWORD"
