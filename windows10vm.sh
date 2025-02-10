@@ -125,8 +125,7 @@ qm create "$VM_ID" --name "$VM_NAME" --memory "$MEMORY" --cpu host --net0 virtio
 
 # Add a SATA hard drive to the VM
 echo "Adding disk to VM..."
-DISK_PATH="$STORAGE_PATH/vm-$VM_ID-disk-0.qcow2"
-qm set "$VM_ID" --scsihw virtio-scsi-pci --scsi0 "$DISK_PATH,ssd=1,size=${DISK_SIZE}G" || {
+qm set "$VM_ID" --scsihw virtio-scsi-pci --scsi0 "local:vm-$VM_ID-disk-0,size=${DISK_SIZE}G" || {
     echo "Error: Failed to add disk to VM. Please check if the storage path is valid."
     echo "Logs can be found at: /var/log/pve/tasks/active"
     exit 1
@@ -134,7 +133,7 @@ qm set "$VM_ID" --scsihw virtio-scsi-pci --scsi0 "$DISK_PATH,ssd=1,size=${DISK_S
 
 # Attach the Windows 10 ISO to the VM's CD/DVD drive
 echo "Attaching ISO to VM..."
-qm set "$VM_ID" --ide2 "$ISO_DIR/Windows10.iso,media=cdrom" || {
+qm set "$VM_ID" --ide2 "local:iso/Windows10.iso,media=cdrom" || {
     echo "Error: Failed to attach ISO to VM. Please check if the ISO path is valid."
     echo "Logs can be found at: /var/log/pve/tasks/active"
     exit 1
@@ -142,7 +141,7 @@ qm set "$VM_ID" --ide2 "$ISO_DIR/Windows10.iso,media=cdrom" || {
 
 # Attach the autounattend.xml file to the VM
 echo "Attaching autounattend.xml..."
-qm set "$VM_ID" --ide3 "$AUTOUATTEND_PATH,media=cdrom" || {
+qm set "$VM_ID" --ide3 "local:iso/autounattend.xml,media=cdrom" || {
     echo "Error: Failed to attach autounattend.xml to VM. Please check if the file path is valid."
     echo "Logs can be found at: /var/log/pve/tasks/active"
     exit 1
