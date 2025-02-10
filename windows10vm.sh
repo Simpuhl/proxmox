@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Ensure the script is running as root
+if [ "$EUID" -ne 0 ]; then
+    echo "Please run this script as root."
+    exit 1
+fi
+
 # Function to find the next available VM ID
 find_next_vm_id() {
     LAST_USED_ID=$(qm list | awk '{print $1}' | grep -E '^[0-9]+$' | sort -n | tail -1)
