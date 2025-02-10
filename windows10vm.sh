@@ -15,8 +15,8 @@ find_next_vm_id() {
         NEXT_ID=$((LAST_USED_ID + 1))
     fi
 
-    # Ensure the VM ID is not already in use or has residual files
-    while qm list | grep -q "^$NEXT_ID " || [ -f "/etc/pve/qemu-server/$NEXT_ID.conf" ]; do
+    # Ensure the VM ID is not already in use (for both VMs and containers)
+    while qm list | grep -q "^$NEXT_ID " || pct list | grep -q "^$NEXT_ID "; do
         NEXT_ID=$((NEXT_ID + 1))
     done
 
@@ -87,6 +87,7 @@ fi
 echo "Creating VM $VM_ID ($VM_NAME)..."
 qm create "$VM_ID" --name "$VM_NAME" --memory "$MEMORY" --cpu host --net0 virtio,bridge=vmbr0 || {
     echo "Error: Failed to create VM $VM_ID. Please check if the VM ID is already in use."
+    echo "Logs can be found at: /var/log/pve/tasks/active"
     exit 1
 }
 
@@ -95,6 +96,7 @@ echo "Adding disk to VM..."
 DISK_PATH="$STORAGE_PATH/vm-$VM_ID-disk-0.qcow2"
 qm set "$VM_ID" --scsihw virtio-scsi-pci --scsi0 "$DISK_PATH,ssd=1,size=${DISK_SIZE}G" || {
     echo "Error: Failed to add disk to VM. Please check if the storage path is valid."
+    echo "Logs can be found at: /var/log/pve/tasks/active"
     exit 1
 }
 
@@ -102,6 +104,7 @@ qm set "$VM_ID" --scsihw virtio-scsi-pci --scsi0 "$DISK_PATH,ssd=1,size=${DISK_S
 echo "Attaching ISO to VM..."
 qm set "$VM_ID" --ide2 "$ISO_PATH,media=cdrom" || {
     echo "Error: Failed to attach ISO to VM. Please check if the ISO path is valid."
+    echo "Logs can be found at: /var/log/pve/tasks/active"
     exit 1
 }
 
@@ -109,6 +112,7 @@ qm set "$VM_ID" --ide2 "$ISO_PATH,media=cdrom" || {
 echo "Attaching autounattend.xml..."
 qm set "$VM_ID" --ide3 "$AUTOUATTEND_PATH,media=cdrom" || {
     echo "Error: Failed to attach autounattend.xml to VM. Please check if the file path is valid."
+    echo "Logs can be found at: /var/log/pve/tasks/active"
     exit 1
 }
 
@@ -116,23 +120,4 @@ qm set "$VM_ID" --ide3 "$AUTOUATTEND_PATH,media=cdrom" || {
 echo "Configuring CPU..."
 qm set "$VM_ID" --cpu host || {
     echo "Error: Failed to configure CPU."
-    exit 1
-}
-
-# Enable the QXL display driver for improved performance
-echo "Configuring display..."
-qm set "$VM_ID" --vga qxl || {
-    echo "Error: Failed to configure display."
-    exit 1
-}
-
-# Start the VM
-echo "Starting VM..."
-qm start "$VM_ID" || {
-    echo "Error: Failed to start VM $VM_ID. Please check the Proxmox logs for more details."
-    echo "Logs can be found at: /var/log/pve/tasks/active"
-    exit 1
-}
-
-echo "VM $VM_ID started successfully."
-echo "Administrator password: $ADMIN_PASSWORD"
+   
