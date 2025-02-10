@@ -41,38 +41,48 @@ read -p "Enter disk size in GB [100]: " DISK_SIZE
 DISK_SIZE=${DISK_SIZE:-100}
 echo "-> Using disk size: $DISK_SIZE GB"
 
-# Specify the Windows 10 ISO to download
-WIN10_ISO_URL="https://software-download.microsoft.com/download/pr/19043.1165.210529-1541.co_release_CLIENT_CONSUMER_x64FRE_en-us.iso"
-ISO_PATH="/var/lib/vz/template/iso/Windows10.iso"
+# Ensure the ISO directory exists
+ISO_DIR="/var/lib/vz/template/iso"
+mkdir -p "$ISO_DIR" || {
+    echo "Error: Failed to create ISO directory. Exiting."
+    exit 1
+}
 
-# Download the Windows 10 ISO
-echo "Downloading Windows 10 ISO..."
-wget -O "$ISO_PATH" "$WIN10_ISO_URL" || {
+# Loop until a valid ISO is provided
+while true; do
+    # Specify the Windows 10 ISO to download
+    WIN10_ISO_URL="https://software-download.microsoft.com/download/pr/19043.1165.210529-1541.co_release_CLIENT_CONSUMER_x64FRE_en-us.iso"
+    ISO_PATH="$ISO_DIR/Windows10.iso"
+
+    # Attempt to download the Windows 10 ISO
+    echo "Downloading Windows 10 ISO..."
+    wget -O "$ISO_PATH" "$WIN10_ISO_URL" && break
+
+    # If download fails, prompt for manual input
     echo "Failed to download Windows 10 ISO. Please provide the path to an existing Windows 10 ISO."
     read -p "Enter the full path or URL to the Windows 10 ISO: " ISO_PATH
 
     # Check if the input is a URL (starts with http:// or https://)
     if [[ "$ISO_PATH" =~ ^https?:// ]]; then
         echo "Downloading ISO from URL: $ISO_PATH"
-        wget -O "$ISO_PATH" "$ISO_PATH" || {
-            echo "Error: Failed to download ISO from the provided URL. Exiting."
-            exit 1
-        }
+        wget -O "$ISO_PATH" "$ISO_PATH" && break
+        echo "Error: Failed to download ISO from the provided URL. Please try again."
     else
         # Check if the local file exists
-        if [ ! -f "$ISO_PATH" ]; then
-            echo "Error: The specified ISO file does not exist. Exiting."
-            exit 1
+        if [ -f "$ISO_PATH" ]; then
+            break
+        else
+            echo "Error: The specified ISO file does not exist. Please try again."
         fi
     fi
-}
+done
 
 # Generate a random password
 ADMIN_PASSWORD=$(generate_password)
 echo "Generated administrator password: $ADMIN_PASSWORD"
 
 # Create the autounattend.xml file
-AUTOUATTEND_PATH="/var/lib/vz/template/iso/autounattend.xml"
+AUTOUATTEND_PATH="$ISO_DIR/autounattend.xml"
 cat <<EOF > "$AUTOUATTEND_PATH"
 <?xml version="1.0" encoding="utf-8"?>
 <unattend xmlns="urn:schemas-microsoft-com:unattend">
