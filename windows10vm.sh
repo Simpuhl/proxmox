@@ -25,12 +25,15 @@ generate_password() {
 # Prompt for user input or use defaults
 read -p "Enter VM name [Windows10]: " VM_NAME
 VM_NAME=${VM_NAME:-Windows10}
+echo "-> Using VM name: $VM_NAME"
 
 read -p "Enter memory size in MB [4096]: " MEMORY
 MEMORY=${MEMORY:-4096}
+echo "-> Using memory size: $MEMORY MB"
 
 read -p "Enter disk size in GB [100]: " DISK_SIZE
 DISK_SIZE=${DISK_SIZE:-100}
+echo "-> Using disk size: $DISK_SIZE GB"
 
 # Specify the Windows 10 ISO to download
 WIN10_ISO_URL="https://software-download.microsoft.com/download/pr/19043.1165.210529-1541.co_release_CLIENT_CONSUMER_x64FRE_en-us.iso"
@@ -142,7 +145,7 @@ EOF
 
 # Find the next available VM ID
 VM_ID=$(find_next_vm_id)
-echo "Using VM ID: $VM_ID"
+echo "-> Using VM ID: $VM_ID"
 
 # Create a new VM in Proxmox
 echo "Creating VM $VM_ID ($VM_NAME)..."
