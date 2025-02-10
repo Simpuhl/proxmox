@@ -128,7 +128,7 @@ qm create "$VM_ID" --name "$VM_NAME" --memory "$MEMORY" --cpu host --net0 virtio
 
 # Add a SATA hard drive to the VM
 echo "Adding disk to VM..."
-qm set "$VM_ID" --scsihw virtio-scsi-pci --scsi0 "local:vm-$VM_ID-disk-0,size=${DISK_SIZE}G" || {
+qm set "$VM_ID" --scsi0 "local:${DISK_SIZE}G" || {
     echo "Error: Failed to add disk to VM. Please check if the storage path is valid."
     echo "Logs can be found at: /var/log/pve/tasks/active"
     exit 1
