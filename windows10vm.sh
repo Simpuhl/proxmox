@@ -183,16 +183,6 @@ EOF
 VM_ID=$(find_next_vm_id)
 echo "-> Using VM ID: $VM_ID"
 
-# Validate storage path
-STORAGE_PATH="/var/lib/vz/images/$VM_ID"
-if [ ! -d "$STORAGE_PATH" ]; then
-    echo "Creating storage directory: $STORAGE_PATH"
-    mkdir -p "$STORAGE_PATH" || {
-        echo "Error: Failed to create storage directory. Please check permissions or storage configuration."
-        exit 1
-    }
-fi
-
 # Create a new VM in Proxmox
 echo "Creating VM $VM_ID ($VM_NAME)..."
 qm create "$VM_ID" --name "$VM_NAME" --memory "$MEMORY" --cpu host --net0 virtio,bridge=vmbr0 || {
@@ -203,8 +193,7 @@ qm create "$VM_ID" --name "$VM_NAME" --memory "$MEMORY" --cpu host --net0 virtio
 
 # Add a SATA hard drive to the VM
 echo "Adding disk to VM..."
-DISK_PATH="$STORAGE_PATH/vm-$VM_ID-disk-0.qcow2"
-qm set "$VM_ID" --scsi0 "local:$DISK_PATH,size=${DISK_SIZE}G" || {
+qm set "$VM_ID" --scsi0 "local-lvm:vm-$VM_ID-disk-0,iothread=1,size=${DISK_SIZE}G" || {
     echo "Error: Failed to add disk to VM. Please check if the storage path is valid."
     echo "Logs can be found at: /var/log/pve/tasks/"
     exit 1
